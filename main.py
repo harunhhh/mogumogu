@@ -4,7 +4,7 @@ import base64
 import time
 from ai_logic import FoodAI  # バックエンドを読み込む
 
-# 1. ページ設定 (camera.pyのデザインを継承)
+# 1. ページ設定 
 st.set_page_config(page_title="もぐもぐスキャナー", page_icon="📸", layout="centered")
 
 # --- 背景デザイン設定 (tuika.py/camera.pyのCSSを統合) ---

@@ -1,0 +1,130 @@
+# Ensure TensorFlow is installed at the very beginning
+!pip install tensorflow
+
+import os
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping 
+from google.colab import drive
+from tensorflow.keras import regularizers
+
+# 1. セッションの初期化とGoogleドライブのマウント
+tf.keras.backend.clear_session()
+if not os.path.exists('/content/drive'):
+    drive.mount('/content/drive')
+
+
+データディレクトリ = '/content/drive/MyDrive/Colab Notebooks/UECFOOD100'
+
+# 2. クラスIDの自動取得とソート
+クラスIDリスト = [d for d in os.listdir(データディレクトリ)
+                 if os.path.isdir(os.path.join(データディレクトリ, d)) and not d.startswith('.')]
+クラスIDリスト = sorted(クラスIDリスト, key=int)
+
+クラス数 = len(クラスIDリスト)
+print(f"ディレクトリ内に合計 {クラス数} 個のクラスを検出しました。")
+
+# 3. ハイパーパラメータの設定
+画像サイズ = (224, 224)
+バッチサイズ = 32
+
+# 4. データセットの読み込み
+訓練データ = tf.keras.utils.image_dataset_from_directory(
+    データディレクトリ,
+    label_mode='categorical',
+    class_names=クラスIDリスト,
+    image_size=画像サイズ,
+    batch_size=バッチサイズ,
+    validation_split=0.2,
+    subset="training",
+    seed=123
+)
+
+検証データ = tf.keras.utils.image_dataset_from_directory(
+    データディレクトリ,
+    label_mode='categorical',
+    class_names=クラスIDリスト,
+    image_size=画像サイズ,
+    batch_size=バッチサイズ,
+    validation_split=0.2,
+    subset="validation",
+    seed=123
+)
+
+# 5. 前処理とパフォーマンス最適化
+正規化レイヤー = layers.Rescaling(1./255)
+訓練データ = 訓練データ.map(lambda x, y: (正規化レイヤー(x), y))
+検証データ = 検証データ.map(lambda x, y: (正規化レイヤー(x), y))
+
+訓練データ = 訓練データ.prefetch(buffer_size=tf.data.AUTOTUNE)
+検証データ = 検証データ.prefetch(buffer_size=tf.data.AUTOTUNE)
+
+# 6. ファインチューニング用モデルの構築
+print("ベースモデル（MobileNetV2）を読み込み中...")
+ベースモデル = tf.keras.applications.MobileNetV2(
+    input_shape=(224, 224, 3),
+    include_top=False,
+    weights='imagenet'
+)
+
+# 一旦すべての層を学習可能（True）にする
+ベースモデル.trainable = True
+
+# ただし、最初の100層はロックして保護
+fine_tune_at = 100
+for layer in ベースモデル.layers[:fine_tune_at]:
+    layer.trainable = False
+
+
+# データ拡張を少しだけ厳しくする
+データ拡張 = tf.keras.Sequential([
+  layers.RandomFlip("horizontal"),
+  layers.RandomRotation(0.2),
+  layers.RandomZoom(0.2),
+  layers.RandomContrast(0.2), # 明るさのバラつきにも慣れさせる
+])
+
+# 最終的なモデルの組み立て（過学習対策入り）
+モデル = models.Sequential([
+    データ拡張,
+    ベースモデル,
+    layers.GlobalAveragePooling2D(),
+    layers.Dropout(0.6), # ストッパーを強める
+    layers.Dense(クラス数,
+                 activation='softmax',
+                 kernel_regularizer=regularizers.l2(0.001)) # L2ペナルティを追加
+])
+
+# 7. コンパイルと学習の開始
+モデル.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# チェックポイントの設定
+checkpoint_path = '/content/drive/MyDrive/Colab Notebooks/food_model_108_best.keras'
+checkpoint_callback = ModelCheckpoint(
+    filepath=checkpoint_path,
+    monitor='val_accuracy',
+    save_best_only=True,
+    verbose=1
+)
+
+# 早期終了の設定
+early_stopping = EarlyStopping(
+    monitor='val_accuracy',    # テストの正解率を監視
+    patience=5,                # 5回連続で自己ベストを更新できなかったら強制ストップ
+    restore_best_weights=True, # 最後に一番良かった状態の脳みそに自動で戻す
+    verbose=1
+)
+
+履歴 = モデル.fit(
+    訓練データ,
+    validation_data=検証データ,
+    epochs=50,
+    callbacks=[checkpoint_callback, early_stopping] 
+)
+
+# 8. 学習済みモデルの保存
+保存パス = '/content/drive/MyDrive/Colab Notebooks/food_model_108_finetuned.keras'
+モデル.save(保存パス)
+print(f"全ての学習が完了しました。最終モデルを保存しました: {保存パス}")
