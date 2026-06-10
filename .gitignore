@@ -1,0 +1,8 @@
+# 【重要】料理の画像フォルダを除外（実際のフォルダ名が違ったら書き換えてね）
+data/
+
+
+# Pythonの一時ファイルやキャッシュ
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
