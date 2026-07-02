@@ -76,21 +76,32 @@ if st.session_state.step == 'input':
     with tab2:
         up = st.file_uploader("ファイルを選択", type=["jpg", "png", "jpeg"])
         if up:
-            st.session_state.img = Image.open(up).convert('RGB')
-            st.image(np.array(st.session_state.img), use_column_width=True)
-            if st.button("アップロード画像で解析"):
-                st.session_state.step = 'result'; st.rerun()
+            try:
+                st.session_state.img = Image.open(up).convert('RGB')
+            except Exception:
+                st.error("画像として読み込めませんでした。別のファイルを選択してください。")
+                st.session_state.img = None
+            if st.session_state.img is not None:
+                st.image(np.array(st.session_state.img), use_container_width=True)
+                if st.button("アップロード画像で解析"):
+                    st.session_state.step = 'result'; st.rerun()
 
 elif st.session_state.step == 'result':
     st.title("解析結果")
     with st.spinner('AIが栄養素をスキャン中...'):
         # ここで本物のAI（バックエンド）を呼び出す
-        res = ai.predict(st.session_state.img)
+        try:
+            res = ai.predict(st.session_state.img)
+        except Exception:
+            st.error("解析に失敗しました。もう一度お試しください。")
+            if st.button("← 撮り直す"):
+                st.session_state.step = 'input'; st.session_state.img = None; st.rerun()
+            st.stop()
         time.sleep(1) # 演出用の待ち時間
 
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.image(np.array(st.session_state.img), use_column_width=True)
+        st.image(np.array(st.session_state.img), use_container_width=True)
     
     with col2:
         # tuika.pyのリッチなカードデザインで結果を表示
