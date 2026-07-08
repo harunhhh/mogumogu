@@ -82,7 +82,7 @@ if st.session_state.step == 'input':
                 st.error("画像として読み込めませんでした。別のファイルを選択してください。")
                 st.session_state.img = None
             if st.session_state.img is not None:
-                st.image(np.array(st.session_state.img), use_container_width=True)
+                st.image(np.array(st.session_state.img), use_column_width=True)
                 if st.button("アップロード画像で解析"):
                     st.session_state.step = 'result'; st.rerun()
 
@@ -101,7 +101,7 @@ elif st.session_state.step == 'result':
 
     col1, col2 = st.columns([1, 1])
     with col1:
-        st.image(np.array(st.session_state.img), use_container_width=True)
+        st.image(np.array(st.session_state.img), use_column_width=True)
     
     with col2:
         # tuika.pyのリッチなカードデザインで結果を表示
