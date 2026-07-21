@@ -1,8 +1,11 @@
+import os
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageEnhance
 from typing import Optional
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class FoodAI:
     """料理画像からカロリーを推定するAIクラス。"""
@@ -19,7 +22,7 @@ class FoodAI:
 
         # クラス名の読み込み
         try:
-            with open("classes.txt", "r", encoding="utf-8") as f:
+            with open(os.path.join(_BASE_DIR, "classes.txt"), "r", encoding="utf-8") as f:
                 self.class_names = [line.strip() for line in f if line.strip()]
             print(f"[OK] {len(self.class_names)} 種類の料理データを読み込みました！")
         except FileNotFoundError:

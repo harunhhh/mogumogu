@@ -16,7 +16,8 @@
 
 | レイヤー | 技術 |
 |----------|------|
-| **フロントエンド** | [Streamlit](https://streamlit.io/) |
+| **フロントエンド** | [Next.js](https://nextjs.org/)（React / TypeScript / Tailwind CSS） |
+| **バックエンド API** | [FastAPI](https://fastapi.tiangolo.com/) |
 | **AIモデル** | CNN（MobileNetV2 ベースのファインチューニング） |
 | **学習フレームワーク** | TensorFlow / Keras |
 | **学習環境** | Google Colab |
@@ -27,9 +28,9 @@
 
 ## 🔍 技術選定の理由
 
-### Streamlit
-Python だけで UI を完結させられるため、フロントエンドの知識がなくてもアプリとして公開できる点を重視して採用。
-カメラ入力・ファイルアップロード・タブ切り替えなど、必要な UI コンポーネントが標準で揃っており、開発コストを大きく削減できた。
+### Next.js + FastAPI
+当初は Streamlit で UI を組んでいたが、独自デザイン（背景ぼかし・カード UI・グラデーションボタンなど）を作り込むにつれて Streamlit のコンポーネント制約と CSS のせめぎ合いが大きくなったため、React ベースの Next.js に移行。
+AI 推論部分は FastAPI の `/predict` エンドポイントとして切り出し、フロントエンドとバックエンドを分離した構成にした。
 
 ### MobileNetV2（転移学習）
 料理画像の分類には画像認識に特化した CNN が必要だが、ゼロから学習させるにはデータ量・計算コストともに現実的でない。
@@ -81,33 +82,59 @@ Dense → Softmax（100クラス分類）
 
 ```
 AIsystem/
-├── main.py              # Streamlit フロントエンド（UI）
-├── ai_logic.py          # AI 推論バックエンド（FoodAI クラス）
-├── food_model.keras     # 学習済み CNN モデル
-├── classes.txt          # 料理クラス一覧（100種）
-├── food_calories.csv    # カロリーデータベース
-├── background.png       # 背景画像
-├── learning_code.txt    # モデル学習コード（Google Colab 用）
-└── README.md            # このファイル
+├── backend/
+│   ├── api.py            # FastAPI アプリ（/predict エンドポイント）
+│   ├── ai_logic.py        # AI 推論バックエンド（FoodAI クラス）
+│   ├── food_model.keras   # 学習済み CNN モデル
+│   ├── classes.txt        # 料理クラス一覧（100種）
+│   ├── food_calories.csv  # カロリーデータベース
+│   └── requirements.txt   # バックエンドの依存パッケージ
+├── frontend/               # Next.js フロントエンド（UI）
+│   └── src/app/page.tsx    # メイン画面
+├── learning_code.txt       # モデル学習コード（Google Colab 用）
+└── README.md                # このファイル
 ```
 
 ---
 
 ## 🚀 セットアップ & 起動
 
-### 1. 依存パッケージのインストール
+スマホのカメラ機能（`getUserMedia`）はHTTPS必須のため、開発用の自己署名証明書を使って両サーバーをHTTPSで起動します。
+
+### 0. 開発用証明書の作成（初回のみ）
 
 ```bash
-pip install streamlit tensorflow pillow pandas numpy
+mkdir certs && cd certs
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 825 -nodes \
+  -subj "/CN=aisystem-dev" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:<自分のPCのLAN IP>"
 ```
 
-### 2. アプリの起動
+`certs/`はコミット対象外（`.gitignore`済み）です。LAN IPが変わったら作り直してください。
+
+### 1. バックエンド（FastAPI）
 
 ```bash
-streamlit run main.py
+cd backend
+pip install -r requirements.txt
+uvicorn api:app --host 0.0.0.0 --port 8000 --ssl-keyfile ../certs/key.pem --ssl-certfile ../certs/cert.pem
 ```
 
-ブラウザで `http://localhost:8501` が自動的に開きます。
+`https://localhost:8000` でAPIが起動します（`--host 0.0.0.0`でLAN内の他端末からもアクセス可能）。
+
+### 2. フロントエンド（Next.js）
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+`npm run dev`は`--experimental-https`付きで`../certs`の証明書を使うよう設定済みです。ブラウザで `https://localhost:3000` を開きます（自己署名証明書のため警告が出た場合は「詳細設定」から進んでください）。
+
+同じWi-Fi内のスマホからは `https://<PCのLAN IP>:3000` でアクセスできます。バックエンドの接続先はアクセス元ホスト名から自動判定されます（固定したい場合は `frontend/.env.local` の `NEXT_PUBLIC_API_URL` を設定）。
+
+スマホなどLAN内の端末からアクセスする場合は、`frontend/.env.local` に `DEV_LAN_HOST=<自分のPCのLAN IP>` を設定してください（Next.jsの開発サーバーが安全のため未許可のホストからのアクセスをブロックするため）。
 
 ---
 

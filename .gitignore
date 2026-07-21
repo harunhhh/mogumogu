@@ -7,3 +7,6 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 CLAUDE.md
+
+# 開発用HTTPS自己署名証明書（環境ごとに生成するためコミット不要）
+certs/
