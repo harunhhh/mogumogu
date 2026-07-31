@@ -11,9 +11,13 @@ _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI(title="もぐもぐスキャナー API")
 
+# 本番のVercelドメイン（例: https://xxxx.vercel.app）をカンマ区切りで指定
+_PROD_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    # スマホなど同じLAN内の端末からのアクセスも許可する（localhost + 主要なプライベートIP帯 + ポート3000）
+    allow_origins=_PROD_ORIGINS,
+    # 開発時のみ: スマホなど同じLAN内の端末からのアクセスも許可する（localhost + 主要なプライベートIP帯 + ポート3000）
     allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}):3000",
     allow_methods=["*"],
     allow_headers=["*"],
