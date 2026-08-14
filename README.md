@@ -10,6 +10,8 @@
 |------|------|
 | カメラ撮影 or 画像アップロード | 料理名・確信度・推定カロリー (kcal) |
 
+**公開URL**: https://mogumogu-mauve.vercel.app
+
 ---
 
 ## 🧠 技術スタック
@@ -88,7 +90,8 @@ AIsystem/
 │   ├── food_model.keras   # 学習済み CNN モデル
 │   ├── classes.txt        # 料理クラス一覧（100種）
 │   ├── food_calories.csv  # カロリーデータベース
-│   └── requirements.txt   # バックエンドの依存パッケージ
+│   ├── requirements.txt   # バックエンドの依存パッケージ
+│   └── Dockerfile         # 本番デプロイ用（Render）
 ├── frontend/               # Next.js フロントエンド（UI）
 │   └── src/app/page.tsx    # メイン画面
 ├── learning_code.txt       # モデル学習コード（Google Colab 用）
@@ -135,6 +138,20 @@ npm run dev
 同じWi-Fi内のスマホからは `https://<PCのLAN IP>:3000` でアクセスできます。バックエンドの接続先はアクセス元ホスト名から自動判定されます（固定したい場合は `frontend/.env.local` の `NEXT_PUBLIC_API_URL` を設定）。
 
 スマホなどLAN内の端末からアクセスする場合は、`frontend/.env.local` に `DEV_LAN_HOST=<自分のPCのLAN IP>` を設定してください（Next.jsの開発サーバーが安全のため未許可のホストからのアクセスをブロックするため）。
+
+---
+
+## ☁️ 本番デプロイ
+
+| レイヤー | サービス | URL |
+|----------|----------|-----|
+| フロントエンド | [Vercel](https://vercel.com/) | https://mogumogu-mauve.vercel.app |
+| バックエンド | [Render](https://render.com/)（Docker, Freeプラン） | https://mogumogu-scanner-api.onrender.com |
+
+- バックエンドは `backend/Dockerfile` を使ってRenderがビルド・起動する
+- フロントエンドの環境変数 `NEXT_PUBLIC_API_URL` にバックエンドURLを設定
+- バックエンドの環境変数 `ALLOWED_ORIGINS` にフロントエンドURL（`https://`込み）を設定し、CORSを許可
+- Renderの無料プランはアクセスがないとスリープするため、しばらく経ってからのアクセスは起動待ちで数十秒かかる場合がある
 
 ---
 
